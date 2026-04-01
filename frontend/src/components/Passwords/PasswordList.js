@@ -12,13 +12,23 @@ function PasswordList() {
   const [showCategories, setShowCategories] = useState(false);
   const [categories, setCategories] = useState([]);
 
+  // Получаем мастер-пароль из localStorage
+  const getMasterPassword = () => {
+    const mp = localStorage.getItem('masterPassword');
+    if (!mp) {
+      alert('Сессия истекла, пожалуйста, войдите снова');
+      window.location.href = '/';
+    }
+    return mp;
+  };
+
   useEffect(() => {
     loadPasswords();
   }, []);
 
   const loadPasswords = async () => {
     try {
-      const masterPassword = prompt('Введите мастер-пароль для расшифровки:');
+      const masterPassword = getMasterPassword();
       if (!masterPassword) return;
       
       const response = await api.get('/passwords', {
@@ -58,21 +68,19 @@ function PasswordList() {
 
   const handleSave = async (passwordData) => {
     try {
-      const masterPassword = prompt('Введите мастер-пароль для шифрования:');
+      const masterPassword = getMasterPassword();
       if (!masterPassword) return;
       
       if (editingPassword) {
-        // Редактирование
         await api.put(`/passwords/${editingPassword.id}`, passwordData, {
           params: { master_password: masterPassword }
         });
-        alert('Пароль успешно обновлен');
+        alert('Пароль обновлен');
       } else {
-        // Добавление
         await api.post('/passwords', passwordData, {
           params: { master_password: masterPassword }
         });
-        alert('Пароль успешно добавлен');
+        alert('Пароль добавлен');
       }
       loadPasswords();
       setIsModalOpen(false);

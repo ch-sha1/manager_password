@@ -7,36 +7,38 @@ function Login({ onLogin }) {
   const [error, setError] = useState('');
   const [require2FA, setRequire2FA] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError('');
 
-    try {
-      if (!require2FA) {
-        const response = await api.post('/auth/login', {
-          master_password: masterPassword,
-        });
-        
-        if (response.data.requires_2fa) {
-          setRequire2FA(true);
-        } else {
-          localStorage.setItem('token', response.data.token);
-          onLogin();
-        }
+  try {
+    if (!require2FA) {
+      const response = await api.post('/auth/login', {
+        master_password: masterPassword,
+      });
+      
+      if (response.data.requires_2fa) {
+        setRequire2FA(true);
       } else {
-        const response = await api.post('/auth/verify-2fa', {
-          master_password: masterPassword,
-          two_factor_code: twoFactorCode,
-        });
-        
+        // СОХРАНЯЕМ ТОКЕН И МАСТЕР-ПАРОЛЬ
         localStorage.setItem('token', response.data.token);
+        localStorage.setItem('masterPassword', masterPassword);  // ← ЭТО ВАЖНО!
         onLogin();
       }
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Ошибка входа');
+    } else {
+      const response = await api.post('/auth/verify-2fa', {
+        master_password: masterPassword,
+        two_factor_code: twoFactorCode,
+      });
+      
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('masterPassword', masterPassword);  // ← И ТУТ ТОЖЕ
+      onLogin();
     }
-  };
-
+  } catch (err) {
+    setError(err.response?.data?.detail || 'Ошибка входа');
+  }
+};
   return (
     <div className="login-container">
       <div className="login-card">
