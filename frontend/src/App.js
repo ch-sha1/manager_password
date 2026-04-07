@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import './App.css';
 import Login from './components/Auth/Login';
@@ -8,12 +8,21 @@ import SettingsModal from './components/Settings/SettingsModal';
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const passwordListRef = useRef();
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('masterPassword');
     toast.success('Вы вышли из системы');
     setIsAuthenticated(false);
+  };
+
+  const handleImportSuccess = () => {
+    // Вызываем метод loadPasswords у компонента PasswordList
+    if (passwordListRef.current) {
+      passwordListRef.current.loadPasswords();
+    }
+    toast.success('Пароли импортированы, список обновлен');
   };
 
   if (!isAuthenticated) {
@@ -41,12 +50,13 @@ function App() {
       </header>
       
       <main className="app-main">
-        <PasswordList />
+        <PasswordList ref={passwordListRef} />
       </main>
       
       <SettingsModal 
         isOpen={showSettings} 
-        onClose={() => setShowSettings(false)} 
+        onClose={() => setShowSettings(false)}
+        onImportSuccess={handleImportSuccess}
       />
     </div>
   );

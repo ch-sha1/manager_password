@@ -3,7 +3,7 @@ import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 import CryptoJS from 'crypto-js';
 
-function SettingsModal({ isOpen, onClose }) {
+function SettingsModal({ isOpen, onClose, onImportSuccess }) {
   const [twoFAEnabled, setTwoFAEnabled] = useState(false);
   const [backupInterval, setBackupInterval] = useState('daily');
   const [backupPath, setBackupPath] = useState('C:/Backups');
@@ -81,11 +81,18 @@ function SettingsModal({ isOpen, onClose }) {
       // Конвертируем в CSV
       const csvData = convertToCSV(response.data);
       
-      // Шифруем AES-256
-      const encrypted = CryptoJS.AES.encrypt(csvData, masterPassword).toString();
+      // Упаковываем данные с версией
+      const exportPackage = {
+        version: '1.0',
+        timestamp: new Date().toISOString(),
+        data: csvData
+      };
       
-      // Сохраняем как .csv (но внутри зашифровано)
-      const blob = new Blob([encrypted], { type: 'text/plain' });
+      // Шифруем AES-256
+      const encrypted = CryptoJS.AES.encrypt(JSON.stringify(exportPackage), masterPassword).toString();
+      
+      // Создаем и скачиваем файл
+      const blob = new Blob([encrypted], { type: 'application/octet-stream' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -117,18 +124,38 @@ function SettingsModal({ isOpen, onClose }) {
         toast.loading('Импорт паролей...', { id: 'import' });
         
         const fileContent = e.target.result;
+        let decrypted;
         
         // Расшифровываем AES-256
-        let decrypted;
         try {
           const bytes = CryptoJS.AES.decrypt(fileContent, masterPassword);
-          decrypted = bytes.toString(CryptoJS.enc.Utf8);
+          const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
           
-          if (!decrypted) {
+          if (!decryptedText) {
             throw new Error('Расшифровка не удалась');
           }
+          
+          // Пробуем распарсить как JSON (наш формат)
+          try {
+            const exportPackage = JSON.parse(decryptedText);
+            if (exportPackage.version === '1.0' && exportPackage.data) {
+              decrypted = exportPackage.data;
+            } else {
+              decrypted = decryptedText;
+            }
+          } catch (parseError) {
+            // Если не JSON, значит это старый формат (просто CSV)
+            decrypted = decryptedText;
+          }
+          
         } catch (err) {
           toast.error('Неверный мастер-пароль или файл поврежден', { id: 'import' });
+          return;
+        }
+        
+        // Проверяем, что это CSV
+        if (!decrypted.includes('site') && !decrypted.includes(',')) {
+          toast.error('Файл не содержит данных в правильном формате', { id: 'import' });
           return;
         }
         
@@ -140,14 +167,14 @@ function SettingsModal({ isOpen, onClose }) {
           return;
         }
         
-        // Получаем существующие пароли
+        // Получаем существующие пароли для проверки дубликатов
         const existingResponse = await api.get('/passwords', {
           params: { master_password: masterPassword }
         });
         
         const existingPasswords = existingResponse.data;
         
-        // Фильтруем дубликаты
+        // Фильтруем дубликаты (по site + login)
         const newPasswords = importedPasswords.filter(imported => 
           !existingPasswords.some(existing => 
             existing.site === imported.site && existing.login === imported.login
@@ -159,6 +186,7 @@ function SettingsModal({ isOpen, onClose }) {
           return;
         }
         
+        // Импортируем новые пароли
         let successCount = 0;
         for (const pwd of newPasswords) {
           try {
@@ -176,10 +204,12 @@ function SettingsModal({ isOpen, onClose }) {
           }
         }
         
+        // Успешное завершение
         toast.success(`Импортировано ${successCount} новых паролей (пропущено дубликатов: ${importedPasswords.length - successCount})`, { id: 'import' });
         
-        if (successCount > 0) {
-          setTimeout(() => window.location.reload(), 1500);
+        // Обновляем список без закрытия окна и без перезагрузки
+        if (onImportSuccess && successCount > 0) {
+          onImportSuccess();
         }
         
       } catch (err) {

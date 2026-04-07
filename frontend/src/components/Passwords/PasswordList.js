@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 import PasswordCard from './PasswordCard';
@@ -6,7 +6,7 @@ import PasswordModal from './PasswordModal';
 import SearchBar from '../Common/SearchBar';
 import ConfirmModal from '../Common/ConfirmModal';
 
-function PasswordList() {
+const PasswordList = forwardRef((props, ref) => {
   const [passwords, setPasswords] = useState([]);
   const [filteredPasswords, setFilteredPasswords] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -27,10 +27,6 @@ function PasswordList() {
     return mp;
   };
 
-  useEffect(() => {
-    loadPasswords();
-  }, []);
-
   const loadPasswords = async () => {
     try {
       const masterPassword = getMasterPassword();
@@ -48,6 +44,15 @@ function PasswordList() {
       toast.error('Ошибка загрузки паролей');
     }
   };
+
+  // Делаем loadPasswords доступной через ref
+  useImperativeHandle(ref, () => ({
+    loadPasswords
+  }));
+
+  useEffect(() => {
+    loadPasswords();
+  }, []);
 
   const handleSearch = (query) => {
     if (!query) {
@@ -96,7 +101,6 @@ function PasswordList() {
   };
 
   const handleDeleteClick = (id) => {
-    console.log('Удаление пароля с id:', id);
     setPasswordToDelete(id);
     setShowConfirm(true);
   };
@@ -191,6 +195,6 @@ function PasswordList() {
       />
     </div>
   );
-}
+});
 
 export default PasswordList;
