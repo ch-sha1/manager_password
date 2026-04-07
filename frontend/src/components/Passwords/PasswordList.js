@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 import PasswordCard from './PasswordCard';
 import PasswordModal from './PasswordModal';
 import SearchBar from '../Common/SearchBar';
+import ConfirmModal from '../Common/ConfirmModal';
 
 function PasswordList() {
   const [passwords, setPasswords] = useState([]);
@@ -11,13 +13,16 @@ function PasswordList() {
   const [editingPassword, setEditingPassword] = useState(null);
   const [showCategories, setShowCategories] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [passwordToDelete, setPasswordToDelete] = useState(null);
 
-  // Получаем мастер-пароль из localStorage
   const getMasterPassword = () => {
     const mp = localStorage.getItem('masterPassword');
     if (!mp) {
-      alert('Сессия истекла, пожалуйста, войдите снова');
-      window.location.href = '/';
+      toast.error('Сессия истекла, пожалуйста, войдите снова');
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1500);
     }
     return mp;
   };
@@ -40,7 +45,7 @@ function PasswordList() {
       setCategories(uniqueCategories);
     } catch (err) {
       console.error('Ошибка загрузки паролей:', err);
-      alert('Ошибка загрузки паролей: ' + (err.response?.data?.detail || err.message));
+      toast.error('Ошибка загрузки паролей');
     }
   };
 
@@ -75,38 +80,47 @@ function PasswordList() {
         await api.put(`/passwords/${editingPassword.id}`, passwordData, {
           params: { master_password: masterPassword }
         });
-        alert('Пароль обновлен');
+        toast.success('Пароль обновлен');
       } else {
         await api.post('/passwords', passwordData, {
           params: { master_password: masterPassword }
         });
-        alert('Пароль добавлен');
+        toast.success('Пароль добавлен');
       }
       loadPasswords();
       setIsModalOpen(false);
     } catch (err) {
       console.error('Ошибка сохранения:', err);
-      alert('Ошибка сохранения пароля: ' + (err.response?.data?.detail || err.message));
+      toast.error('Ошибка сохранения пароля');
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Удалить этот пароль?')) {
-      try {
-        await api.delete(`/passwords/${id}`);
-        loadPasswords();
-        alert('Пароль удален');
-      } catch (err) {
-        console.error('Ошибка удаления:', err);
-        alert('Ошибка удаления: ' + (err.response?.data?.detail || err.message));
-      }
+  const handleDeleteClick = (id) => {
+    console.log('Удаление пароля с id:', id);
+    setPasswordToDelete(id);
+    setShowConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      const masterPassword = getMasterPassword();
+      if (!masterPassword) return;
+      
+      await api.delete(`/passwords/${passwordToDelete}`);
+      loadPasswords();
+      toast.success('Пароль удален');
+      setShowConfirm(false);
+      setPasswordToDelete(null);
+    } catch (err) {
+      console.error('Ошибка удаления:', err);
+      toast.error('Ошибка удаления');
     }
   };
 
   const handleShare = (password) => {
     const shareLink = `${window.location.origin}/share/${password.id}`;
     navigator.clipboard.writeText(shareLink);
-    alert('Ссылка для доступа скопирована!');
+    toast.success('Ссылка для доступа скопирована');
   };
 
   const filterByCategory = (category) => {
@@ -152,7 +166,7 @@ function PasswordList() {
             key={pwd.id}
             password={pwd}
             onEdit={handleEdit}
-            onDelete={handleDelete}
+            onDelete={handleDeleteClick}
             onShare={handleShare}
           />
         ))}
@@ -163,6 +177,17 @@ function PasswordList() {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSave}
         password={editingPassword}
+      />
+
+      <ConfirmModal
+        isOpen={showConfirm}
+        onClose={() => {
+          setShowConfirm(false);
+          setPasswordToDelete(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Удаление пароля"
+        message="Вы уверены, что хотите удалить этот пароль?"
       />
     </div>
   );

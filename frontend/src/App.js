@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Toaster, toast } from 'react-hot-toast';
 import './App.css';
 import Login from './components/Auth/Login';
 import PasswordList from './components/Passwords/PasswordList';
@@ -10,15 +11,23 @@ function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('masterPassword');
+    toast.success('Вы вышли из системы');
     setIsAuthenticated(false);
   };
 
   if (!isAuthenticated) {
-    return <Login onLogin={() => setIsAuthenticated(true)} />;
+    return (
+      <>
+        <Toaster position="top-right" />
+        <Login onLogin={() => setIsAuthenticated(true)} />
+      </>
+    );
   }
 
   return (
     <div className="App">
+      <Toaster position="top-center" />
       <header className="app-header">
         <h1>Менеджер паролей</h1>
         <div className="header-actions">

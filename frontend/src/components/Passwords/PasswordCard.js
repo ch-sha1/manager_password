@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
+import { toast } from 'react-hot-toast';
 
 function PasswordCard({ password, onEdit, onDelete, onShare }) {
   const [showPassword, setShowPassword] = useState(false);
 
-  const copyToClipboard = (text) => {
+  const copyToClipboard = (text, type) => {
     navigator.clipboard.writeText(text);
-    alert('Скопировано');
+    toast.success(`${type} скопирован`);
   };
 
   return (
@@ -17,7 +18,7 @@ function PasswordCard({ password, onEdit, onDelete, onShare }) {
       <div className="card-content">
         <p>
           <strong>Логин:</strong>
-          <span onClick={() => copyToClipboard(password.login)} className="clickable" title={password.login}>
+          <span onClick={() => copyToClipboard(password.login, 'Логин')} className="clickable" title={password.login}>
             {password.login}
           </span>
         </p>
@@ -27,7 +28,7 @@ function PasswordCard({ password, onEdit, onDelete, onShare }) {
           <span onClick={() => setShowPassword(!showPassword)} className="clickable">
             {showPassword ? password.password : '••••••'}
           </span>
-          <button onClick={() => copyToClipboard(password.password)} className="copy-btn" title="Копировать">
+          <button onClick={() => copyToClipboard(password.password, 'Пароль')} className="copy-btn" title="Копировать">
             📋
           </button>
         </p>

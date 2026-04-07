@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import api from '../../services/api';
+import { toast } from 'react-hot-toast';
 
 function Login({ onLogin }) {
   const [masterPassword, setMasterPassword] = useState('');
@@ -7,38 +8,43 @@ function Login({ onLogin }) {
   const [error, setError] = useState('');
   const [require2FA, setRequire2FA] = useState(false);
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError('');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
 
-  try {
-    if (!require2FA) {
-      const response = await api.post('/auth/login', {
-        master_password: masterPassword,
-      });
-      
-      if (response.data.requires_2fa) {
-        setRequire2FA(true);
+    try {
+      if (!require2FA) {
+        const response = await api.post('/auth/login', {
+          master_password: masterPassword,
+        });
+        
+        if (response.data.requires_2fa) {
+          setRequire2FA(true);
+          toast.info('Введите код 2FA');
+        } else {
+          localStorage.setItem('token', response.data.token);
+          localStorage.setItem('masterPassword', masterPassword);
+          toast.success('Добро пожаловать!');
+          onLogin();
+        }
       } else {
-        // СОХРАНЯЕМ ТОКЕН И МАСТЕР-ПАРОЛЬ
+        const response = await api.post('/auth/verify-2fa', {
+          master_password: masterPassword,
+          two_factor_code: twoFactorCode,
+        });
+        
         localStorage.setItem('token', response.data.token);
-        localStorage.setItem('masterPassword', masterPassword);  // ← ЭТО ВАЖНО!
+        localStorage.setItem('masterPassword', masterPassword);
+        toast.success('Вход выполнен успешно');
         onLogin();
       }
-    } else {
-      const response = await api.post('/auth/verify-2fa', {
-        master_password: masterPassword,
-        two_factor_code: twoFactorCode,
-      });
-      
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('masterPassword', masterPassword);  // ← И ТУТ ТОЖЕ
-      onLogin();
+    } catch (err) {
+      const errorMessage = err.response?.data?.detail || 'Ошибка входа';
+      setError(errorMessage);
+      toast.error(errorMessage);
     }
-  } catch (err) {
-    setError(err.response?.data?.detail || 'Ошибка входа');
-  }
-};
+  };
+
   return (
     <div className="login-container">
       <div className="login-card">
