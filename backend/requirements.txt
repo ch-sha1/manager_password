@@ -1,9 +1,13 @@
 fastapi
-uvicorn
-asyncpg
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
 redis
 python-jose[cryptography]
 passlib[bcrypt]
+bcrypt
 python-multipart
 pyotp
 cryptography
+python-dotenv
+email-validator

@@ -6,7 +6,7 @@ import PasswordList from './components/Passwords/PasswordList';
 import SettingsModal from './components/Settings/SettingsModal';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
   const [showSettings, setShowSettings] = useState(false);
   const passwordListRef = useRef();
 
@@ -18,7 +18,6 @@ function App() {
   };
 
   const handleImportSuccess = () => {
-    // Вызываем метод loadPasswords у компонента PasswordList
     if (passwordListRef.current) {
       passwordListRef.current.loadPasswords();
     }
@@ -48,13 +47,13 @@ function App() {
           </button>
         </div>
       </header>
-      
+
       <main className="app-main">
         <PasswordList ref={passwordListRef} />
       </main>
-      
-      <SettingsModal 
-        isOpen={showSettings} 
+
+      <SettingsModal
+        isOpen={showSettings}
         onClose={() => setShowSettings(false)}
         onImportSuccess={handleImportSuccess}
       />

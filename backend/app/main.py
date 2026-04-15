@@ -21,13 +21,16 @@ app.include_router(auth.router)
 app.include_router(passwords.router)
 app.include_router(generator.router)
 
+
 @app.get("/")
 async def root():
     return {"status": "ok"}
 
+
 @app.get("/api/health")
 async def health():
     return {"status": "healthy"}
+
 
 if __name__ == "__main__":
     import uvicorn
