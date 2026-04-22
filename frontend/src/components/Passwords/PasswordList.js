@@ -11,6 +11,7 @@ import PasswordCard from './PasswordCard';
 import PasswordModal from './PasswordModal';
 import SearchBar from '../Common/SearchBar';
 import ConfirmModal from '../Common/ConfirmModal';
+import { createShareToken } from '../../services/shareService';
 
 const PasswordList = forwardRef((props, ref) => {
     const [passwords, setPasswords] = useState([]);
@@ -32,8 +33,12 @@ const PasswordList = forwardRef((props, ref) => {
     const [dragOverPasswordId, setDragOverPasswordId] = useState(null);
 
     const [searchQuery, setSearchQuery] = useState('');
-    const [dropPosition, setDropPosition] = useState(null); // 'before' | null
-    const [edgeDropZone, setEdgeDropZone] = useState(null); // 'start' | 'end' | null
+    const [dropPosition, setDropPosition] = useState(null);
+    const [edgeDropZone, setEdgeDropZone] = useState(null);
+
+    const [shareModalOpen, setShareModalOpen] = useState(false);
+    const [sharePassword, setSharePassword] = useState('');
+    const [shareItems, setShareItems] = useState([]);
 
     const hasLoadedRef = useRef(false);
 
@@ -243,46 +248,60 @@ const PasswordList = forwardRef((props, ref) => {
         }
     };
 
-    const handleShare = async (password) => {
-        const masterPassword = getMasterPassword();
-        if (!masterPassword) return;
-
-        try {
-            const response = await api.post('/passwords/bulk-share', {
-                ids: [password.id]
-            }, {
-                params: { master_password: masterPassword }
-            });
-
-            await navigator.clipboard.writeText(response.data.text);
-            toast.success('Данные пароля скопированы');
-        } catch (err) {
-            console.error(err);
-            toast.error(err.response?.data?.detail || 'Ошибка при копировании');
+    const openShareModal = (items) => {
+        if (!items.length) {
+            toast.error('Нет данных для шаринга');
+            return;
         }
+
+        setShareItems(items.map((item) => ({
+            site: item.site,
+            login: item.login,
+            password: item.password,
+            group_name: item.group_name || ''
+        })));
+        setSharePassword('');
+        setShareModalOpen(true);
     };
 
-    const handleBulkShare = async () => {
-        const masterPassword = getMasterPassword();
-        if (!masterPassword) return;
+    const handleShare = (password) => {
+        openShareModal([password]);
+    };
 
+    const handleBulkShare = () => {
         if (selectedIds.length === 0) {
             toast.error('Сначала выберите пароли');
             return;
         }
 
-        try {
-            const response = await api.post('/passwords/bulk-share', {
-                ids: selectedIds
-            }, {
-                params: { master_password: masterPassword }
-            });
+        const items = passwords.filter((item) => selectedIds.includes(item.id));
+        openShareModal(items);
+    };
 
-            await navigator.clipboard.writeText(response.data.text);
-            toast.success(`Скопировано ${selectedIds.length} паролей`);
+    const confirmShare = async () => {
+        if (!sharePassword.trim()) {
+            toast.error('Введите общий мастер-пароль');
+            return;
+        }
+
+        try {
+            const token = createShareToken(shareItems, sharePassword.trim());
+            const link = `${window.location.origin}/share/${token}`;
+
+            await navigator.clipboard.writeText(link);
+
+            toast.success(
+                shareItems.length > 1
+                    ? 'Ссылка на общие пароли скопирована'
+                    : 'Ссылка на пароль скопирована'
+            );
+
+            setShareModalOpen(false);
+            setSharePassword('');
+            setShareItems([]);
         } catch (err) {
             console.error(err);
-            toast.error(err.response?.data?.detail || 'Ошибка при массовом копировании');
+            toast.error('Ошибка создания ссылки');
         }
     };
 
@@ -639,6 +658,73 @@ const PasswordList = forwardRef((props, ref) => {
                 title="Удаление пароля"
                 message="Вы уверены, что хотите удалить этот пароль?"
             />
+
+            {shareModalOpen && (
+                <div className="modal-overlay" onClick={() => setShareModalOpen(false)}>
+                    <div
+                        className="modal-content"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="modal-header">
+                            <h2>Поделиться паролями</h2>
+                            <button className="close-btn" onClick={() => setShareModalOpen(false)}>×</button>
+                        </div>
+
+                        <div style={{ padding: '1.5rem' }}>
+                            <div className="form-group">
+                                <label>Общий мастер-пароль для ссылки</label>
+                                <input
+                                    type="password"
+                                    value={sharePassword}
+                                    onChange={(e) => setSharePassword(e.target.value)}
+                                    placeholder="Введите пароль, который получатель должен знать"
+                                />
+                            </div>
+
+                            <p style={{ fontSize: '12px', color: '#666', marginTop: '10px' }}>
+                                Ссылка будет содержать AES-зашифрованные данные. Без этого пароля получатель их не откроет.
+                            </p>
+
+                            <p style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
+                                В ссылку будет включено записей: <strong>{shareItems.length}</strong>
+                            </p>
+                        </div>
+
+                        <div
+                            className="modal-actions"
+                            style={{
+                                padding: '1rem 1.5rem',
+                                borderTop: '1px solid #e2e8f0',
+                                display: 'flex',
+                                gap: '10px'
+                            }}
+                        >
+                            <button
+                                className="cancel-btn"
+                                onClick={() => setShareModalOpen(false)}
+                                style={{ flex: 1, padding: '8px' }}
+                            >
+                                Отмена
+                            </button>
+
+                            <button
+                                className="save-btn"
+                                onClick={confirmShare}
+                                style={{
+                                    flex: 1,
+                                    padding: '8px',
+                                    background: '#48bb78',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px'
+                                }}
+                            >
+                                Создать ссылку
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 });

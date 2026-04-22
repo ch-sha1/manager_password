@@ -12,7 +12,9 @@ from app.auth import (
     verify_master_password,
     hash_master_password,
     create_access_token,
-    decode_token
+    decode_token,
+    decrypt_password,
+    encrypt_password
 )
 from app.redis_client import redis_client
 
@@ -56,7 +58,6 @@ def send_2fa_code_email(to_email: str, code: str):
 
     try:
         with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=20) as server:
-            server.set_debuglevel(1)
             server.ehlo()
             server.login(smtp_user, smtp_password)
             server.send_message(message)
@@ -224,3 +225,54 @@ async def save_auth_settings(
         twoFAEnabled=bool(user.twofa_enabled),
         twoFAEmail=user.twofa_email
     )
+
+
+@router.post("/change-master-password", response_model=schemas.ChangeMasterPasswordResponse)
+async def change_master_password(
+    payload: schemas.ChangeMasterPasswordRequest,
+    db: Session = Depends(get_db),
+    authorization: str = Header(None)
+):
+    user = get_authorized_user(authorization, db)
+
+    if not verify_master_password(payload.current_password, user.master_password_hash):
+        raise HTTPException(status_code=400, detail="Текущий мастер-пароль неверный")
+
+    if payload.new_password != payload.confirm_password:
+        raise HTTPException(status_code=400, detail="Новый пароль и подтверждение не совпадают")
+
+    if payload.current_password == payload.new_password:
+        raise HTTPException(status_code=400, detail="Новый пароль должен отличаться от текущего")
+
+    if len(payload.new_password) < 4:
+        raise HTTPException(status_code=400, detail="Новый мастер-пароль слишком короткий")
+
+    user_passwords = db.query(models.Password).filter(
+        models.Password.user_id == user.id
+    ).all()
+
+    try:
+        for pwd in user_passwords:
+            decrypted_password = decrypt_password(
+                pwd.encrypted_password,
+                payload.current_password
+            )
+            pwd.encrypted_password = encrypt_password(
+                decrypted_password,
+                payload.new_password
+            )
+
+        user.master_password_hash = hash_master_password(payload.new_password)
+
+        db.commit()
+        db.refresh(user)
+
+        return schemas.ChangeMasterPasswordResponse(
+            message="Мастер-пароль успешно изменен"
+        )
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="Не удалось перешифровать сохраненные пароли. Проверьте текущий мастер-пароль"
+        )

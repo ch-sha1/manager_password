@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional, List
 
@@ -112,7 +112,17 @@ class AuthSettingsResponse(BaseModel):
 
 class AuthSettingsUpdate(BaseModel):
     twoFAEnabled: bool
-    twoFAEmail: Optional[EmailStr] = None
+    twoFAEmail: Optional[str] = None
+
+
+class ChangeMasterPasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+    confirm_password: str
+
+
+class ChangeMasterPasswordResponse(BaseModel):
+    message: str
 
 
 class GeneratePasswordRequest(BaseModel):

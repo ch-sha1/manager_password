@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
 
 function PasswordCard({
@@ -11,55 +11,28 @@ function PasswordCard({
     onStartDrag
 }) {
     const [showPassword, setShowPassword] = useState(false);
-    const holdTimer = useRef(null);
 
     const copyToClipboard = (text, type) => {
         navigator.clipboard.writeText(text);
         toast.success(`${type} скопирован`);
     };
 
-    const handleCheckboxClick = (e) => {
-        e.stopPropagation();
-        onToggleSelect(password.id);
-    };
-
-    const handleDragStart = (e) => {
-        if (onStartDrag) {
-            onStartDrag(password.id);
-        }
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', String(password.id));
-    };
-
-    const startLongPress = () => {
-        clearTimeout(holdTimer.current);
-        holdTimer.current = setTimeout(() => {
-            onToggleSelect(password.id);
-        }, 350);
-    };
-
-    const cancelLongPress = () => {
-        clearTimeout(holdTimer.current);
-    };
-
     return (
         <div
             className={`password-card ${isSelected ? 'selected' : ''}`}
             draggable
-            onDragStart={handleDragStart}
-            onTouchStart={startLongPress}
-            onTouchEnd={cancelLongPress}
-            onTouchMove={cancelLongPress}
+            onDragStart={() => onStartDrag(password.id)}
         >
             <div className="card-top-row">
-                <label className="select-checkbox" onClick={(e) => e.stopPropagation()}>
+                <label className="select-checkbox">
                     <input
                         type="checkbox"
-                        checked={isSelected}
-                        onChange={handleCheckboxClick}
+                        checked={!!isSelected}
+                        onChange={() => onToggleSelect(password.id)}
                     />
                 </label>
-                <div className="drag-handle" title="Перетащить">⋮⋮</div>
+
+                <span className="drag-handle" title="Перетащить">⋮⋮</span>
             </div>
 
             <div className="card-header">
@@ -83,7 +56,7 @@ function PasswordCard({
                     <span
                         onClick={() => setShowPassword(!showPassword)}
                         className="clickable"
-                        title="Показать/скрыть пароль"
+                        title={showPassword ? password.password : 'Нажмите, чтобы показать'}
                     >
                         {showPassword ? password.password : '••••••'}
                     </span>
@@ -91,24 +64,41 @@ function PasswordCard({
                         onClick={() => copyToClipboard(password.password, 'Пароль')}
                         className="copy-btn"
                         title="Копировать"
-                        type="button"
                     >
                         📋
                     </button>
                 </p>
 
-                <p>
-                    <strong>Группа:</strong>
-                    <span className="group-badge-card">
-                        {password.group_name || 'Без группы'}
-                    </span>
-                </p>
+                {password.group_name && (
+                    <p>
+                        <strong>Группа:</strong>
+                        <span className="group-badge-card">{password.group_name}</span>
+                    </p>
+                )}
             </div>
 
             <div className="card-footer">
-                <button onClick={() => onShare(password)} className="share-btn" title="Поделиться" type="button">🔗</button>
-                <button onClick={() => onEdit(password)} className="edit-btn" title="Редактировать" type="button">✏️</button>
-                <button onClick={() => onDelete(password.id)} className="delete-btn" title="Удалить" type="button">🗑️</button>
+                <button
+                    onClick={() => onShare(password)}
+                    className="share-btn"
+                    title="Поделиться"
+                >
+                    🔗
+                </button>
+                <button
+                    onClick={() => onEdit(password)}
+                    className="edit-btn"
+                    title="Редактировать"
+                >
+                    ✏️
+                </button>
+                <button
+                    onClick={() => onDelete(password.id)}
+                    className="delete-btn"
+                    title="Удалить"
+                >
+                    🗑️
+                </button>
             </div>
         </div>
     );
