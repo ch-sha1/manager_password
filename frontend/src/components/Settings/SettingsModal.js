@@ -9,9 +9,9 @@ import {
     pickBackupDirectory,
     createEncryptedBackup,
     getDirectoryHandle
-} from '../../services/backupService'
+} from '../../services/backupService';
 
-function SettingsModal({ isOpen, onClose, onImportSuccess }) {
+function SettingsModal({ isOpen, onClose, onImportSuccess, theme, setTheme }) {
     const [twoFAEnabled, setTwoFAEnabled] = useState(false);
     const [twoFAEmail, setTwoFAEmail] = useState('');
     const [backupInterval, setBackupInterval] = useState('never');
@@ -137,6 +137,7 @@ function SettingsModal({ isOpen, onClose, onImportSuccess }) {
         const existing = cachedGroups.find(
             (g) => g.name.toLowerCase() === trimmed.toLowerCase()
         );
+
         if (existing) return existing.id;
 
         const response = await api.post('/passwords/groups', { name: trimmed });
@@ -208,7 +209,7 @@ function SettingsModal({ isOpen, onClose, onImportSuccess }) {
                     return decryptedText;
                 }
             } catch {
-                // try next password
+                // пробуем следующий пароль
             }
         }
 
@@ -439,6 +440,21 @@ function SettingsModal({ isOpen, onClose, onImportSuccess }) {
 
                 <div className="settings-content" style={{ padding: '1.5rem' }}>
                     <div className="settings-section" style={{ marginBottom: '1.5rem' }}>
+                        <h3 style={{ marginBottom: '0.75rem' }}>Тема оформления</h3>
+
+                        <div className="form-group">
+                            <label>Тема</label>
+                            <select
+                                value={theme}
+                                onChange={(e) => setTheme(e.target.value)}
+                            >
+                                <option value="light">Светлая</option>
+                                <option value="dark">Тёмная</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="settings-section" style={{ marginBottom: '1.5rem' }}>
                         <h3 style={{ marginBottom: '0.75rem' }}>Двухфакторная защита</h3>
 
                         {isLoadingSettings ? (
@@ -446,14 +462,14 @@ function SettingsModal({ isOpen, onClose, onImportSuccess }) {
                         ) : (
                             <>
                                 <div className="setting-item">
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={twoFAEnabled}
-                                            onChange={(e) => setTwoFAEnabled(e.target.checked)}
-                                        />
-                                        Включить подтверждение входа кодом из email
-                                    </label>
+                                        <label className="setting-checkbox-label">
+                                            <input
+                                                type="checkbox"
+                                                checked={twoFAEnabled}
+                                                onChange={(e) => setTwoFAEnabled(e.target.checked)}
+                                            />
+                                            <span>Включить подтверждение входа кодом из email</span>
+                                        </label>
                                 </div>
 
                                 {twoFAEnabled && (
@@ -512,14 +528,14 @@ function SettingsModal({ isOpen, onClose, onImportSuccess }) {
                     <div className="settings-section" style={{ marginBottom: '1.5rem' }}>
                         <h3 style={{ marginBottom: '0.75rem' }}>Резервное копирование</h3>
 
-                        <div className="setting-item" style={{ marginBottom: '10px' }}>
-                            <label>Интервал автосохранения:</label>
+                        <div className="form-group">
+                            <label>Интервал автосохранения</label>
                             <select
                                 value={backupInterval}
                                 onChange={(e) => setBackupInterval(e.target.value)}
-                                style={{ marginLeft: '10px', padding: '5px' }}
                             >
                                 <option value="never">Никогда</option>
+                                {/* <option value="minute">Каждую минуту (тест)</option> */}
                                 <option value="hourly">Каждый час</option>
                                 <option value="daily">Ежедневно</option>
                                 <option value="weekly">Еженедельно</option>
@@ -527,26 +543,18 @@ function SettingsModal({ isOpen, onClose, onImportSuccess }) {
                             </select>
                         </div>
 
-                        <div className="setting-item" style={{ marginBottom: '10px' }}>
-                            <label>Путь резервных копий:</label>
-                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '8px' }}>
+                        <div className="form-group">
+                            <label>Путь резервных копий</label>
+                            <div className="inline-row">
                                 <input
                                     type="text"
                                     value={backupPath || 'Папка не выбрана'}
                                     readOnly
-                                    style={{ flex: 1 }}
                                 />
                                 <button
                                     type="button"
                                     onClick={handleChooseBackupFolder}
-                                    style={{
-                                        padding: '8px 16px',
-                                        cursor: 'pointer',
-                                        background: '#4a5568',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '6px'
-                                    }}
+                                    className="secondary-btn"
                                 >
                                     Выбрать
                                 </button>
@@ -564,30 +572,14 @@ function SettingsModal({ isOpen, onClose, onImportSuccess }) {
                         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
                             <button
                                 onClick={handleExport}
-                                className="export-btn"
-                                style={{
-                                    padding: '8px 16px',
-                                    cursor: 'pointer',
-                                    background: '#4299e1',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '6px'
-                                }}
+                                className="secondary-btn"
                             >
                                 📤 Экспорт
                             </button>
 
                             <label
-                                className="import-btn"
-                                style={{
-                                    padding: '8px 16px',
-                                    cursor: 'pointer',
-                                    background: '#48bb78',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    display: 'inline-block'
-                                }}
+                                className="secondary-btn"
+                                style={{ display: 'inline-block' }}
                             >
                                 📥 Импорт
                                 <input
@@ -636,14 +628,7 @@ function SettingsModal({ isOpen, onClose, onImportSuccess }) {
                     <button
                         className="save-btn"
                         onClick={handleSave}
-                        style={{
-                            flex: 1,
-                            padding: '8px',
-                            background: '#48bb78',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px'
-                        }}
+                        style={{ flex: 1, padding: '8px' }}
                         disabled={isSaving || isLoadingSettings}
                     >
                         {isSaving ? 'Сохранение...' : 'Сохранить'}

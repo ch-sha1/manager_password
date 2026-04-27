@@ -11,7 +11,17 @@ function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [shareToken, setShareToken] = useState(null);
+
+    const [theme, setTheme] = useState(() => {
+        return localStorage.getItem('theme') || 'light';
+    });
+
     const passwordListRef = useRef();
+
+    useEffect(() => {
+        document.body.className = theme === 'dark' ? 'theme-dark' : 'theme-light';
+        localStorage.setItem('theme', theme);
+    }, [theme]);
 
     useEffect(() => {
         const path = window.location.pathname;
@@ -75,15 +85,17 @@ function App() {
     }
 
     return (
-        <div className="App">
+        <div className={`App ${theme === 'dark' ? 'theme-dark' : 'theme-light'}`}>
             <Toaster position="top-center" />
 
             <header className="app-header">
                 <h1>Менеджер паролей</h1>
+
                 <div className="header-actions">
                     <button onClick={() => setShowSettings(true)} className="settings-btn">
                         Настройки
                     </button>
+
                     <button onClick={handleLogout} className="logout-btn">
                         Выйти
                     </button>
@@ -98,6 +110,8 @@ function App() {
                 isOpen={showSettings}
                 onClose={() => setShowSettings(false)}
                 onImportSuccess={handleImportSuccess}
+                theme={theme}
+                setTheme={setTheme}
             />
 
             {shareToken && (
